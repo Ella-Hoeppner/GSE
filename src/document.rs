@@ -238,7 +238,9 @@ impl<E: Encloser, O: Operator> DocumentSyntaxTree<E, O> {
               } else {
                 children[operator.left_args() - 1].position().end()
               };
-              let end = if operator.right_args() == 0 {
+              let end = if operator.right_args() == 0
+                || operator.left_args() >= children.len()
+              {
                 position.end()
               } else {
                 children[operator.left_args()].position().start()
