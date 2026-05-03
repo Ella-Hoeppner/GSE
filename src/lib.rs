@@ -1197,86 +1197,101 @@ mod core_tests {
 
   #[test]
   fn ast_subtree_text() {
-    let doc = Document::from_text_with_syntax(SexpSyntax, "(* (+ 1 2) 3)");
+    let text = "(* (+ 1 2) 3)";
+    let doc = Document::from_text_with_syntax(SexpSyntax, text);
 
-    assert_eq!(doc.get_subtree_text(&[0]).unwrap(), "(* (+ 1 2) 3)");
-    assert_eq!(doc.get_subtree_text(&[0, 0]).unwrap(), "*");
-    assert_eq!(doc.get_subtree_text(&[0, 1]).unwrap(), "(+ 1 2)");
-    assert_eq!(doc.get_subtree_text(&[0, 1, 2]).unwrap(), "2");
+    assert_eq!(doc.get_subtree_text(&[0], text).unwrap(), "(* (+ 1 2) 3)");
+    assert_eq!(doc.get_subtree_text(&[0, 0], text).unwrap(), "*");
+    assert_eq!(doc.get_subtree_text(&[0, 1], text).unwrap(), "(+ 1 2)");
+    assert_eq!(doc.get_subtree_text(&[0, 1, 2], text).unwrap(), "2");
   }
 
   #[test]
   fn single_line_document_index_to_row_and_col() {
-    let doc = Document::from_text_with_syntax(SexpSyntax, "(* (+ 1 2) 3)");
-    for i in 0..doc.text.len() {
-      assert_eq!(doc.index_to_row_and_col(i), Ok((0, i)));
+    let text = "(* (+ 1 2) 3)";
+    let doc = Document::from_text_with_syntax(SexpSyntax, text);
+    for i in 0..text.len() {
+      assert_eq!(doc.index_to_row_and_col(i, text), Ok((0, i)));
     }
     assert_eq!(
-      doc.index_to_row_and_col(doc.text.len()),
-      Ok((0, doc.text.len()))
+      doc.index_to_row_and_col(text.len(), text),
+      Ok((0, text.len()))
     );
     assert_eq!(
-      doc.index_to_row_and_col(doc.text.len() + 1),
+      doc.index_to_row_and_col(text.len() + 1, text),
       Err(InvalidDocumentIndex)
     );
   }
 
   #[test]
   fn multi_line_document_index_to_row_and_col() {
-    let doc =
-      Document::from_text_with_syntax(SexpSyntax, "(* (+ 1 2)\n   3\n   4)");
+    let text = "(* (+ 1 2)\n   3\n   4)";
+    let doc = Document::from_text_with_syntax(SexpSyntax, text);
     for i in 0..11 {
-      assert_eq!(doc.index_to_row_and_col(i), Ok((0, i)));
+      assert_eq!(doc.index_to_row_and_col(i, text), Ok((0, i)));
     }
     for i in 11..16 {
-      assert_eq!(doc.index_to_row_and_col(i), Ok((1, i - 11)));
+      assert_eq!(doc.index_to_row_and_col(i, text), Ok((1, i - 11)));
     }
     for i in 16..20 {
-      assert_eq!(doc.index_to_row_and_col(i), Ok((2, i - 16)));
+      assert_eq!(doc.index_to_row_and_col(i, text), Ok((2, i - 16)));
     }
   }
 
   #[test]
   fn single_line_document_row_and_col_to_index() {
-    let doc = Document::from_text_with_syntax(SexpSyntax, "(* (+ 1 2) 3)");
-    for i in 0..doc.text.len() {
-      assert_eq!(doc.row_and_col_to_index(0, i), Ok(i));
+    let text = "(* (+ 1 2) 3)";
+    let doc = Document::from_text_with_syntax(SexpSyntax, text);
+    for i in 0..text.len() {
+      assert_eq!(doc.row_and_col_to_index(0, i, text), Ok(i));
     }
   }
 
   #[test]
   fn multi_line_document_row_and_col_to_index() {
-    let doc =
-      Document::from_text_with_syntax(SexpSyntax, "(+ 1\n   2\n   3\n   4)");
+    let text = "(+ 1\n   2\n   3\n   4)";
+    let doc = Document::from_text_with_syntax(SexpSyntax, text);
     for i in 0..4 {
-      assert_eq!(doc.row_and_col_to_index(0, i), Ok(i));
+      assert_eq!(doc.row_and_col_to_index(0, i, text), Ok(i));
     }
-    assert_eq!(doc.row_and_col_to_index(0, 4), Ok(4));
-    assert_eq!(doc.row_and_col_to_index(0, 5), Err(InvalidDocumentCharPos));
+    assert_eq!(doc.row_and_col_to_index(0, 4, text), Ok(4));
+    assert_eq!(
+      doc.row_and_col_to_index(0, 5, text),
+      Err(InvalidDocumentCharPos)
+    );
     for i in 0..4 {
-      assert_eq!(doc.row_and_col_to_index(1, i), Ok(5 + i));
+      assert_eq!(doc.row_and_col_to_index(1, i, text), Ok(5 + i));
     }
-    assert_eq!(doc.row_and_col_to_index(1, 4), Ok(9));
-    assert_eq!(doc.row_and_col_to_index(1, 5), Err(InvalidDocumentCharPos));
+    assert_eq!(doc.row_and_col_to_index(1, 4, text), Ok(9));
+    assert_eq!(
+      doc.row_and_col_to_index(1, 5, text),
+      Err(InvalidDocumentCharPos)
+    );
     for i in 0..4 {
-      assert_eq!(doc.row_and_col_to_index(2, i), Ok(10 + i));
+      assert_eq!(doc.row_and_col_to_index(2, i, text), Ok(10 + i));
     }
-    assert_eq!(doc.row_and_col_to_index(2, 4), Ok(14));
-    assert_eq!(doc.row_and_col_to_index(2, 5), Err(InvalidDocumentCharPos));
+    assert_eq!(doc.row_and_col_to_index(2, 4, text), Ok(14));
+    assert_eq!(
+      doc.row_and_col_to_index(2, 5, text),
+      Err(InvalidDocumentCharPos)
+    );
     for i in 0..5 {
-      assert_eq!(doc.row_and_col_to_index(3, i), Ok(15 + i));
+      assert_eq!(doc.row_and_col_to_index(3, i, text), Ok(15 + i));
     }
-    assert_eq!(doc.row_and_col_to_index(3, 5), Ok(20));
-    assert_eq!(doc.row_and_col_to_index(3, 6), Err(InvalidDocumentCharPos));
+    assert_eq!(doc.row_and_col_to_index(3, 5, text), Ok(20));
+    assert_eq!(
+      doc.row_and_col_to_index(3, 6, text),
+      Err(InvalidDocumentCharPos)
+    );
   }
 
   #[test]
   fn document_row_and_col_to_index_inverts_index_to_row_and_col() {
-    let doc =
-      Document::from_text_with_syntax(SexpSyntax, "(* (+ 1 2)\n   3\n   4)\n");
-    for i in 0..doc.text.len() {
-      let (row, col) = doc.index_to_row_and_col(i).unwrap();
-      assert_eq!(doc.row_and_col_to_index(row, col), Ok(i));
+    let text = "(* (+ 1 2)\n   3\n   4)\n";
+    let doc = Document::from_text_with_syntax(SexpSyntax, text);
+    for i in 0..text.len() {
+      let (row, col) = doc.index_to_row_and_col(i, text).unwrap();
+      assert_eq!(doc.row_and_col_to_index(row, col, text), Ok(i));
     }
   }
 

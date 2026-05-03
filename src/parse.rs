@@ -46,8 +46,12 @@ pub struct ParseError {
 }
 
 impl ParseError {
-  pub fn describe(&self, document: &Document<'_, impl Syntax>) -> String {
-    document.describe_document_position(self.pos.clone())
+  pub fn describe(
+    &self,
+    document: &Document<impl Syntax>,
+    text: &str,
+  ) -> String {
+    document.describe_document_position(self.pos.clone(), text)
       + "\n"
       + &format!("{}", self.kind)
   }

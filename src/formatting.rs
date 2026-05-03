@@ -47,12 +47,13 @@ pub trait Formatter<E: Encloser, O: Operator> {
       }
     }
   }
-  fn format_document<'t, S: Syntax<E = E, O = O>>(
+  fn format_document<S: Syntax<E = E, O = O>>(
     &mut self,
-    document: Document<'t, S>,
+    document: Document<S>,
+    text: &str,
   ) -> String {
     if !document.parsing_failures.is_empty() {
-      document.text.to_string()
+      text.to_string()
     } else {
       document
         .syntax_trees

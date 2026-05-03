@@ -288,8 +288,7 @@ impl<E: Encloser + IdStr, O: Operator + IdStr> From<DocumentSyntaxTree<E, O>>
 }
 
 #[derive(Debug, Clone)]
-pub struct Document<'t, S: Syntax> {
-  pub text: &'t str,
+pub struct Document<S: Syntax> {
   grapheme_indeces: Vec<usize>,
   newline_indeces: Vec<usize>,
   pub syntax: S,
@@ -303,7 +302,7 @@ pub struct InvalidDocumentIndex;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InvalidDocumentCharPos;
 
-impl<'t, S: Syntax> From<Parser<'t, S>> for Document<'t, S> {
+impl<'t, S: Syntax> From<Parser<'t, S>> for Document<S> {
   fn from(mut parser: Parser<'t, S>) -> Self {
     let (mut grapheme_indeces, newline_indeces) =
       parser.text.grapheme_indices(true).fold(
@@ -328,14 +327,13 @@ impl<'t, S: Syntax> From<Parser<'t, S>> for Document<'t, S> {
       newline_indeces,
       syntax_trees,
       parsing_failures,
-      text: parser.text,
       syntax: parser.syntax,
     }
   }
 }
 
-impl<'t, S: Syntax> Document<'t, S> {
-  pub fn from_text_with_syntax(syntax: S, text: &'t str) -> Self {
+impl<S: Syntax> Document<S> {
+  pub fn from_text_with_syntax(syntax: S, text: &str) -> Self {
     Parser::new(syntax, text).into()
   }
   pub fn get_subtree(
@@ -351,13 +349,14 @@ impl<'t, S: Syntax> Document<'t, S> {
       Err(InvalidTreePath)
     }
   }
-  pub fn get_subtree_text(
+  pub fn get_subtree_text<'t>(
     &self,
     path: &[usize],
+    text: &'t str,
   ) -> Result<&'t str, InvalidTreePath> {
     let pos = self.get_subtree(path)?.position();
     Ok(
-      &self.text
+      &text
         [self.grapheme_indeces[pos.start()]..self.grapheme_indeces[pos.end()]],
     )
   }
@@ -532,9 +531,10 @@ impl<'t, S: Syntax> Document<'t, S> {
     &self,
     row: usize,
     col: usize,
+    text: &str,
   ) -> Result<usize, InvalidDocumentCharPos> {
     if row == 0 {
-      if (self.newline_indeces.is_empty() && col <= self.text.len())
+      if (self.newline_indeces.is_empty() && col <= text.len())
         || (!self.newline_indeces.is_empty() && col <= self.newline_indeces[0])
       {
         Ok(col)
@@ -544,7 +544,7 @@ impl<'t, S: Syntax> Document<'t, S> {
     } else if row == self.newline_indeces.len() {
       let last_line_start = self.newline_indeces.last().unwrap();
       let index = last_line_start + 1 + col;
-      if index <= self.text.len() {
+      if index <= text.len() {
         Ok(index)
       } else {
         Err(InvalidDocumentCharPos)
@@ -564,8 +564,9 @@ impl<'t, S: Syntax> Document<'t, S> {
   pub fn index_to_row_and_col(
     &self,
     index: usize,
+    text: &str,
   ) -> Result<(usize, usize), InvalidDocumentIndex> {
-    if index <= self.text.len() {
+    if index <= text.len() {
       Ok(
         self
           .newline_indeces
@@ -642,13 +643,9 @@ impl<'t, S: Syntax> Document<'t, S> {
     }
     annotation_log
   }
-  pub fn get_line(&self, line_index: usize) -> &'t str {
-    &self.text[if line_index == 0 {
-      0..self
-        .newline_indeces
-        .first()
-        .copied()
-        .unwrap_or(self.text.len())
+  pub fn get_line<'t>(&self, line_index: usize, text: &'t str) -> &'t str {
+    &text[if line_index == 0 {
+      0..self.newline_indeces.first().copied().unwrap_or(text.len())
     } else {
       self
         .newline_indeces
@@ -660,14 +657,19 @@ impl<'t, S: Syntax> Document<'t, S> {
           .newline_indeces
           .get(line_index)
           .copied()
-          .unwrap_or(self.text.len())
+          .unwrap_or(text.len())
     }]
   }
-  pub fn describe_document_position(&self, pos: Range<usize>) -> String {
+  pub fn describe_document_position(
+    &self,
+    pos: Range<usize>,
+    text: &str,
+  ) -> String {
     let start = pos.start;
     let end = pos.end;
-    let (start_row, start_col) = self.index_to_row_and_col(start).unwrap();
-    let (end_row, end_col) = self.index_to_row_and_col(end).unwrap();
+    let (start_row, start_col) =
+      self.index_to_row_and_col(start, text).unwrap();
+    let (end_row, end_col) = self.index_to_row_and_col(end, text).unwrap();
     let line_indices = (if start_row > 0 {
       start_row - 1
     } else {
@@ -687,7 +689,7 @@ impl<'t, S: Syntax> Document<'t, S> {
     let mut lines = line_names
       .into_iter()
       .zip(line_indices)
-      .map(|(name, i)| format!("{name} | {}", self.get_line(i)))
+      .map(|(name, i)| format!("{name} | {}", self.get_line(i, text)))
       .collect::<Vec<String>>()
       .join("\n");
     let (start_col, end_col) = (start_col.min(end_col), start_col.max(end_col));
